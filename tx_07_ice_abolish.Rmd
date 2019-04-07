@@ -1,0 +1,81 @@
+---
+title: 'TX 07: Should ICE be Abolished?'
+author: "Evelyn Cai"
+date: "March 7, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+# Load the appropriate libraries
+library(tidyverse)
+library(dplyr)
+library(gt)
+library(janitor)
+library(gganimate)
+```
+
+```{r graphic, message = FALSE, warning = FALSE}
+# Read in TX07 CSV and assign to tx07 tibble
+tx07 <- read_csv("elections-poll-tx07-1-microdata.csv") %>%
+  
+  # Make variable names "clean" by lowercasing everything
+  clean_names()
+
+# Create a bar chart by piping the tibble into various functions and ggplot
+tx07 %>%
+  
+  # Look at the three variables we're interested in
+  select(aboloishice, race_eth, region) %>%
+  
+  # Filter out the nonresponses for race_eth or those who wrote "Other"
+  filter(! race_eth %in% c("[DO NOT READ] Don't know/Refused", "Other")) %>%
+  
+  # Reorder the order of race_eth so that Hispanic will be at the bottom (the bottom level is more important for comparison in a stacked bar plot, and we are interested in the Hispanic population since this is an interesting, rather educated, and affluent area of Texas to ask whether ICE should be abolished, a debate that impacts all minorities and immigrants, but has recently gained attention for its treatment and target of Mexican/Latin- American immigrants)
+  mutate(race_eth = fct_relevel(race_eth, "Asian", "Black", "White", "Hispanic")) %>%
+  
+  # Group by all the variables we're interested so we can create a column called count, which will be our continuous variable on the y-axis
+  group_by(race_eth, aboloishice, region) %>%
+  
+  # Create count by counting number of rows per group
+  mutate(count = n()) %>%
+  
+  # Filter out duplicate rows
+  unique() %>%
+  
+  # Ungroup so that we can use the newly created Count variable freely without being grouped with the other two variables
+  ungroup() %>%
+  
+  # Create a ggplot, assigning aboloishice to the x axis, count to the y axis, and filling the bars with race_eth
+  ggplot(mapping = aes(x = aboloishice, y = count, fill = aboloishice)) +
+  
+  # Use the RColorBrewer pre-loaded palettes
+  scale_fill_brewer(palette = "YlGnBu") +
+  
+  # Make it a bar chart
+  geom_col() +
+  
+  # Get rid of the panel major x and minor x gridlines; they're not quite serving any purpose and look too distracting
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        # Angle the x-axis text labels
+        axis.text.x = element_text(angle = 40, hjust = 1),
+        # Get rid of the legend title
+        legend.title = element_blank()) +
+  
+  # Facet by region
+  facet_grid(~region) +
+  
+  # Add titles to reflect when, where, and what the data was collected for
+  labs(title = "Attitudes towards Abolishing ICE by Region for {current_frame} Respondents",
+       subtitle = "Texas District 7, Sept. 2018",
+       caption = "Source: New York Times Upshot/ Siena College") +
+  
+  # Change x axis label to a less cryptic label
+  xlab(label = "Should ICE be Abolished?") +
+  # Change y axis to be more specific as to what count is
+  ylab(label = "Number of People") +
+  # Add in gganimate function through manual transition by race
+  transition_manual(race_eth)
+```
+
